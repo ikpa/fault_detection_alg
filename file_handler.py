@@ -77,9 +77,12 @@ class Printer:
             else:
                 txt += " " + arg
 
-
         if "print" in mode:
             print(txt)
 
         if "file" in mode and f is not None:
             f.write(txt + "\n")
+
+    def close(self):
+        if "file" in self.mode:
+            self.f.close()

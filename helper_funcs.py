@@ -266,8 +266,13 @@ def segs_from_i_to_time(ix_list, t_x, bad_segs):
 
         bad_segs_time_1 = []
         for bad_seg_1 in fixed_bads:
+            #print(bad_seg_1)
             start_t = t_x[bad_seg_1[0]]
-            end_t = t_x[bad_seg_1[-1]]
+
+            if bad_seg_1[-1] > len(t_x) + 1:
+                end_t = t_x[-1]
+            else:
+                end_t = t_x[bad_seg_1[-1]]
             bad_segs_time_1.append([start_t, end_t])
 
         bad_segs_time.append(bad_segs_time_1)
@@ -276,18 +281,23 @@ def segs_from_i_to_time(ix_list, t_x, bad_segs):
 
 
 def find_good_segs(i_x_target, bad_seg_list, i_x_tot):
-    ix_set = set(list(range(i_x_target[0] - i_x_tot[0], i_x_target[1] - i_x_tot[0] + 1)))
+    #ix_set = set(list(range(i_x_target[0] - i_x_tot[0], i_x_target[1] - i_x_tot[0] + 1)))
     good_seg_is = []
+
+    #print(i_x_tot)
 
     for i in range(len(bad_seg_list)):
         bad_segs = bad_seg_list[i]
+        ix = i_x_tot[0]
+        ix_set = set(list(range(i_x_target[0] - ix[0], i_x_target[1] - ix[0] + 1)))
+        #print(bad_segs)
 
         bad_i_set = set()
         for bad_seg in bad_segs:
             bad_list = list(range(bad_seg[0], bad_seg[-1] + 1))
             bad_i_set.update(bad_list)
 
-        good_list_all = list(ix_set - bad_i_set)
+        good_list_all = [x for x in list(ix_set - bad_i_set) if x >= 0]
 
         split_good_list = split_into_lists(good_list_all)
 
@@ -297,9 +307,11 @@ def find_good_segs(i_x_target, bad_seg_list, i_x_tot):
 
         good_seg_is.append(good_is)
 
-        if len(good_is) > 1:
-            print(good_list_all)
-            print(good_is)
+        #print(good_list)
+
+        # if len(good_is) > 1:
+        #     print(good_list_all)
+        #     print(good_is)
 
     return good_seg_is
 
@@ -358,7 +370,6 @@ def list_good_sigs(names, signals, bad_seg_list, sus_seg_list):
             good_signals.append(signals[i])
             good_sus.append(sus_seg_list[i])
             good_bad.append([])
-
 
     return good_names, good_signals, good_sus, good_bad
 

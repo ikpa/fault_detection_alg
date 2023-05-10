@@ -16,6 +16,8 @@ import test_funcs as tf
 default_filters = ["uniq", "flat", "spike", "fft"]
 print_modes = ["print", "file", "none"]
 
+default_time_window = (0.210, 0.50)
+
 
 # get command line arguments
 def arg_parser():
@@ -24,14 +26,24 @@ def arg_parser():
                                                  "measurements")
 
     parser.add_argument("--filename", required=True, type=str, help="filename of the dataset to analyse")
+    parser.add_argument("-m", "--mode", required=True, type=int,
+                        help="the mode for the program. 1 -> analyse entire time window, "
+                             "show bad segments; 2 -> analyse partial window , "
+                             "show good segments (requires -t/--time)")
+    parser.add_argument("-t", "--time", type=float, nargs=2, default=default_time_window, help="time window for mode 2 in "
+                                                                                   "seconds, default (0.210, 0.50)")
     parser.add_argument('--filters', nargs='+', choices=default_filters,
-                        default=default_filters, help="the basic filters to use")
+                        default=default_filters, help="the basic FDFs to use")
     parser.add_argument("-p", "--physicality", action="store_true", default=False,
-                        help="do physical consistency analysis")
+                        help="do consistency analysis")
+    parser.add_argument("-o", "--output", type=str, default="output_test.txt", help="file to output results to")
     parser.add_argument("--plot", action="store_true", default=False, help="plot signals with results")
     parser.add_argument("-prnt", "--print_mode", default="print", choices=print_modes)
     parser.add_argument("-log", "--log_filename", default="")
-    return parser.parse_args()
+
+    args = parser.parse_args()
+
+    return args
 
 
 # print results
@@ -94,16 +106,10 @@ def print_results(names, signals, filt_statuses, bad_segs, suspicious_segs, prin
 
 
 # current version of the program.
-def thirdver(fname, filters, phys, print_mode, log_fname):
+def thirdver(fname, filters, phys, printer):
+    """run the default mode of the program. outputs bad segments"""
+
     detecs = np.load("array120_trans_newnames.npz")
-
-    warnings.filterwarnings("ignore", category=RuntimeWarning)
-
-    if print_mode == "file":
-        file = open(log_fname, "w")
-        printer = fr.Printer("file", file)
-    else:
-        printer = fr.Printer(print_mode)
 
     printer.extended_write("analysing " + fname, additional_mode="print")
     printer.extended_write("", additional_mode="print")
@@ -163,8 +169,7 @@ def thirdver(fname, filters, phys, print_mode, log_fname):
 
     printer.extended_write("total time elapsed: " + str(tot_time) + " secs", additional_mode="print")
 
-    if print_mode == "file":
-        file.close()
+    printer.close()
 
     plot_dat = [signals, names, n_chan, signal_statuses, bad_segs, suspicious_segs, phys_stat, t]
 
@@ -172,21 +177,16 @@ def thirdver(fname, filters, phys, print_mode, log_fname):
 
 
 # TODO test with larger values of seg_extend
-def partial_analysis(time_seg, fname, print_mode, output="output_test.txt", log_fname="test.log",
+def partial_analysis(time_seg, fname, printer, output="output_test.txt",
                      channels=["MEG*1", "MEG*4"],
-                     filters=default_filters, seg_extend=400, phys=False):
+                     filters=default_filters, seg_extend=400, phys=False, plot=False):
     signals, names, t, n_chan = fr.get_signals(fname, channels=channels)
-
-    if print_mode == "file":
-        printer = fr.Printer("file", open(log_fname, "w"))
-    else:
-        printer = fr.Printer(print_mode)
 
     cropped_signals, cropped_ix, seg_i = hf.crop_signals_time(time_seg, t, signals, seg_extend)
     signal_statuses, bad_segs, suspicious_segs, exec_times = sa.analyse_all_neo(cropped_signals, names, n_chan, printer,
                                                                                 filters=filters, filter_beginning=False)
     detecs = np.load("array120_trans_newnames.npz")
-    good_seg_list = hf.find_good_segs(seg_i, bad_segs, cropped_ix[0])
+    good_seg_list = hf.find_good_segs(seg_i, bad_segs, cropped_ix)
 
     if phys:
         all_diffs, all_rel_diffs, chan_dict = pca.check_all_phys(cropped_signals, detecs, names, n_chan, bad_segs,
@@ -209,7 +209,9 @@ def partial_analysis(time_seg, fname, print_mode, output="output_test.txt", log_
     if output is not None:
         fr.write_data_compact(output, write_data, col_names)
 
-    if True:
+    printer.close()
+
+    if plot:
         bad_segs_time = hf.segs_from_i_to_time(cropped_ix, t, bad_segs)
         sus_segs_time = hf.segs_from_i_to_time(cropped_ix, t, suspicious_segs)
         for i in range(n_chan):
@@ -239,11 +241,22 @@ def partial_analysis(time_seg, fname, print_mode, output="output_test.txt", log_
             ax.set_title(status)
             plt.show()
 
-    return col_names, write_data
 
+def orig_main(args, printer):
+
+    col_names, data, plot_dat = thirdver(args.filename, args.filters, args.physicality, printer)
+
+    signals, names, n_chan, signal_statuses, bad_segs, suspicious_segs, phys_stat, t = plot_dat
+
+    fr.write_data_compact("output_test.txt", data, col_names)
+
+    if args.plot:
+        hf.plot_in_order_ver3(signals, names, n_chan, signal_statuses, bad_segs, suspicious_segs, physicality=phys_stat,
+                              time_x=t)
 
 def main():
     args = arg_parser()
+    warnings.filterwarnings("ignore", category=RuntimeWarning)
 
     if args.print_mode == "file":
         if args.log_filename == "":
@@ -254,15 +267,21 @@ def main():
     else:
         logfname = ""
 
-    col_names, data, plot_dat = thirdver(args.filename, args.filters, args.physicality, args.print_mode, logfname)
+    if args.print_mode == "file":
+        printer = fr.Printer("file", open(logfname, "w"))
+    else:
+        printer = fr.Printer(args.print_mode)
 
-    signals, names, n_chan, signal_statuses, bad_segs, suspicious_segs, phys_stat, t = plot_dat
+    printer.extended_write("mode:", args.mode, additional_mode="print")
 
-    fr.write_data_compact("output_test.txt", data, col_names)
+    if args.mode == 1:
+        orig_main(args, printer)
 
-    if args.plot:
-        hf.plot_in_order_ver3(signals, names, n_chan, signal_statuses, bad_segs, suspicious_segs, physicality=phys_stat,
-                              time_x=t)
+    if args.mode == 2:
+        if args.time == default_time_window:
+            printer.extended_write("no time window given, analysing default window", default_time_window, additional_mode="print")
+
+        partial_analysis(args.time, args.filename, printer, args.output, filters=args.filters, phys=args.physicality, plot=args.plot)
 
 
 if __name__ == '__main__':

@@ -16,8 +16,8 @@ def magn_from_point(a_pinv, point):
     return magn
 
 
-cpus = os.cpu_count()
-pool = Pool(cpus)
+# cpus = os.cpu_count()
+# pool = Pool(cpus)
 
 def calc_magn_field_from_signals(signals, xs, vectors, printer, ave_window=400):
     """calculates a magnetic field vector as a function of time from a set of signals
@@ -400,7 +400,7 @@ def check_all_phys_alt(signals, detecs, names, n_chan, bad_seg_list, sus_seg_lis
         # print("time to get stats", end_time - start_time)
         printer.extended_write()
 
-    pool.map(loop_func, list(range(n_chan)), all_diffs, all_rel_diffs, chan_dict, np.full(n_chan, detecs))
+    # pool.map(loop_func, list(range(n_chan)), all_diffs, all_rel_diffs, chan_dict, np.full(n_chan, detecs))
 
     return all_diffs, all_rel_diffs, chan_dict
 
