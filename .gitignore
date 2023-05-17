@@ -1,3 +1,6 @@
 venv/
 output_test.txt
 test.log
+test_funcs.py
+helmet_vis.py
+viz.py

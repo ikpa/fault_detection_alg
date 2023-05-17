@@ -934,7 +934,7 @@ def final_analysis(segments, confidences):
     return bad_segs, suspicious_segs
 
 
-def analyse_all_neo(signals, names, chan_num, printer,
+def analyse_all_neo(signals, names, chan_num, printer=None,
                     filters=None,
                     filter_beginning=True,
                     fft_goertzel=False):
@@ -946,6 +946,10 @@ def analyse_all_neo(signals, names, chan_num, printer,
     the time it took to analyse each signal."""
     if filters is None:
         filters = ["uniq", "flat", "spike", "fft"]
+
+    if printer is None:
+        import file_handler as fh
+        printer = fh.Printer("none")
 
     # move fft filter to last place (requires other bad segments as input)
     if "fft" in filters:

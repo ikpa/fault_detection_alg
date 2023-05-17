@@ -8,6 +8,7 @@ import math
 not all of them are used or commented"""
 
 orig_time_window = (0.210, 0.50)
+r_sens_sq = 0.06**2
 
 def plot_spans(ax, segments, color="blue"):
     """plot all segments onto a figure"""
@@ -543,11 +544,9 @@ def find_nearby_detectors(d_name, detectors, good_names, r_sens=0.06):
 
         detector = detectors[name]
         r = detector[:3, 3]
-        delta_r = np.sqrt((r_dut[0] - r[0]) ** 2 +
-                          (r_dut[1] - r[1]) ** 2 +
-                          (r_dut[2] - r[2]) ** 2)
+        delta_r = (r_dut[0] - r[0]) ** 2 + (r_dut[1] - r[1]) ** 2 + (r_dut[2] - r[2]) ** 2
 
-        if delta_r < r_sens:
+        if delta_r < r_sens_sq:
             nears.append(name)
 
     return nears
@@ -560,3 +559,15 @@ def length_of_segments(segments):
         tot_len += length
 
     return tot_len
+
+
+def frac_of_sigs(segs):
+    n_tot = len(segs)
+
+    n_segs = 0
+    for seg in segs:
+        if seg:
+            n_segs += 1
+
+    frac = n_segs/n_tot
+    return n_segs, frac

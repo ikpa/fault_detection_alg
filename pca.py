@@ -2,7 +2,7 @@ import math
 import os
 import time
 #import multiprocessing as mp
-from pathos.multiprocessing import ProcessingPool as Pool
+#from pathos.multiprocessing import ProcessingPool as Pool
 
 import numpy as np
 
