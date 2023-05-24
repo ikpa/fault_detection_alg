@@ -19,8 +19,8 @@ print_modes = ["print", "file", "none"]
 default_time_window = (0.210, 0.50)
 
 
-# get command line arguments
 def arg_parser():
+    """parse command line arguments"""
     parser = argparse.ArgumentParser(description="analyse a meg dataset and"
                                                  "find faulty and/or unphysical"
                                                  "measurements")
@@ -30,8 +30,9 @@ def arg_parser():
                         help="the mode for the program. 1 -> analyse entire time window, "
                              "show bad segments; 2 -> analyse partial window , "
                              "show good segments (requires -t/--time)")
-    parser.add_argument("-t", "--time", type=float, nargs=2, default=default_time_window, help="time window for mode 2 in "
-                                                                                   "seconds, default (0.210, 0.50)")
+    parser.add_argument("-t", "--time", type=float, nargs=2, default=default_time_window,
+                        help="time window for mode 2 in "
+                             "seconds, default (0.210, 0.50)")
     parser.add_argument('--filters', nargs='+', choices=default_filters,
                         default=default_filters, help="the basic FDFs to use")
     parser.add_argument("-p", "--physicality", action="store_true", default=False,
@@ -46,73 +47,25 @@ def arg_parser():
     return args
 
 
-# print results
-def print_results(names, signals, filt_statuses, bad_segs, suspicious_segs, printer,
-                  phys_statuses=[], phys_confs=[],
-                  all_rel_diffs=[], chan_dict=[]):
-    print_phys = not len(phys_statuses) == 0
-    printer.extended_write("results:")
-    printer.extended_write()
+def thirdver(fname, filters, phys, printer, channels=["MEG*1", "MEG*4"]):
+    """run the default mode of the program (mode 1). outputs bad and suspicious segments as well as results of CA.
 
-    for i in range(len(names)):
-        # print(len(names))
-        name = names[i]
-        signal = signals[i]
-        filt_status = filt_statuses[i]
-        bad_seg = bad_segs[i]
-        sus_seg = suspicious_segs[i]
-        printer.extended_write(name)
+    parameters:
+    fname: name of file to analyse
+    filters: list of all FDFs to use. strings
+    phys: boolean. if true, CA is run
+    channels: names of channels to analyse. allows wildcard characters.
+    printer: printer object. see file_handler.py
 
-        if filt_status:
-            printer.extended_write("signal marked as bad")
-        else:
-            printer.extended_write("signal not marked as bad")
-
-        sig_len = len(signal)
-        bad_len = hf.length_of_segments(bad_seg)
-        sus_len = hf.length_of_segments(sus_seg)
-
-        rel_bad_len = bad_len / sig_len
-        rel_sus_len = sus_len / sig_len
-        printer.extended_write("fraction of signal marked as bad: " + str(rel_bad_len) + ", bad segments:", bad_seg)
-        printer.extended_write(
-            "fraction of signal marked as suspicious: " + str(rel_sus_len) + ", suspicious segments:", sus_seg)
-
-        if print_phys:
-            phys_stat = phys_statuses[i]
-            phys_conf = phys_confs[i]
-            rel_diffs = all_rel_diffs[name]
-            chan_dat = chan_dict[name]
-
-            times_in_calc = len(chan_dat)
-            times_ex = len([x for x in chan_dat if chan_dat[x] == 1])
-
-            ave_diff = np.mean(rel_diffs)
-
-            if phys_stat == 0:
-                phys_string = "signal determined to be physical"
-            if phys_stat == 1:
-                phys_string = "signal determined to be unphysical"
-            if phys_stat == 2:
-                phys_string = "physicality of signal undetermined"
-            if phys_stat == 3:
-                phys_string = "signal not used in physicality calculation"
-
-            printer.extended_write(phys_string + ", confidence: " + str(phys_conf))
-            printer.extended_write("times in calculation: " + str(times_in_calc) + ", times excluded: " +
-                                   str(times_ex) + ", average relative improvement when excluded: " + str(ave_diff))
-
-        printer.extended_write()
-
-
-# current version of the program.
-def thirdver(fname, filters, phys, printer):
-    """run the default mode of the program. outputs bad segments"""
+    returns:
+    col_names: column names for the results.
+    write_data: list of lists containing all the results. for example, write_data[i] contains the list with results for column with the name in col_names[i]
+    plot_data: list of lists with data for plot_in_order_ver3"""
 
     printer.extended_write("analysing " + fname, additional_mode="print")
     printer.extended_write("", additional_mode="print")
 
-    signals, names, t, n_chan = fr.get_signals(fname)
+    signals, names, t, n_chan = fr.get_signals(fname, channels=channels)
     printer.extended_write("filtering with the following FDFs:", filters, additional_mode="print")
     printer.extended_write("", additional_mode="print")
     start_time = time.time()
@@ -145,22 +98,22 @@ def thirdver(fname, filters, phys, printer):
         num_unus = phys_stat.count(3)
         # print(phys_stat)
 
-        frac_const_all = num_const/n_chan
-        frac_unconst_all = num_unconst/n_chan
-        frac_und_all = num_und/n_chan
-        frac_unus_all = num_unus/n_chan
+        frac_const_all = num_const / n_chan
+        frac_unconst_all = num_unconst / n_chan
+        frac_und_all = num_und / n_chan
+        frac_unus_all = num_unus / n_chan
 
         n_analysed = n_chan - num_bads
 
-        frac_const_anal = num_const/n_analysed
-        frac_unconst_anal = num_unconst/n_analysed
-        frac_und_anal = num_und/n_analysed
-        frac_unus_anal = (num_unus - num_bads)/n_analysed
+        frac_const_anal = num_const / n_analysed
+        frac_unconst_anal = num_unconst / n_analysed
+        frac_und_anal = num_und / n_analysed
+        frac_unus_anal = (num_unus - num_bads) / n_analysed
 
         end_time = time.time()
         phys_time = (end_time - start_time)
         printer.extended_write("time elapsed in physicality analysis: " + str(phys_time) + " secs",
-                                additional_mode="print")
+                               additional_mode="print")
         printer.extended_write("", additional_mode="print")
         printer.extended_write("per cent of all signals", additional_mode="print")
         printer.extended_write("consistent:", 100 * frac_const_all, "%", additional_mode="print")
@@ -184,9 +137,6 @@ def thirdver(fname, filters, phys, printer):
     tot_time = phys_time + filt_time
     printer.extended_write("-----------------------------------------------------", additional_mode="print")
     printer.extended_write("", additional_mode="print")
-
-    # print_results(names, signals, signal_statuses, bad_segs, suspicious_segs, printer,
-    #                    phys_stat, phys_conf, all_rel_diffs, chan_dict)
 
     i_x = list(range(len(t)))
     bad_segs_time = hf.segs_from_i_to_time(i_x, t, bad_segs)
@@ -212,9 +162,23 @@ def thirdver(fname, filters, phys, printer):
 def partial_analysis(time_seg, fname, printer, output="output_test.txt",
                      channels=["MEG*1", "MEG*4"],
                      filters=default_filters, seg_extend=400, phys=False, plot=False):
+    """run partial analysis (mode 2). analyses a segment of all signals slightly larger than the inputted time segment,
+     returns nothing but writes results to file.
+
+    parameters:
+    time_seg: tuple of floats. time segment (in seconds) to analyse
+    fname: filename to analyse
+    printer: printer object, see file_handler.py
+    output: string. the output filename
+    channels: the channels to analyse. allows wildcard characters
+    filters: the FDFs to use
+    seg_extend: int. determines how much the time segment is extended at each end (in data points)
+    phys: boolean. if true, CA is run
+    plot: boolean. if true, results are plotted"""
     signals, names, t, n_chan = fr.get_signals(fname, channels=channels)
 
-    printer.extended_write("analysing time window " + str(time_seg) + " secs from file " + fname, additional_mode="print")
+    printer.extended_write("analysing time window " + str(time_seg) + " secs from file " + fname,
+                           additional_mode="print")
     printer.extended_write("", additional_mode="print")
 
     printer.extended_write("filtering with the following FDFs:", filters, additional_mode="print")
@@ -307,7 +271,11 @@ def partial_analysis(time_seg, fname, printer, output="output_test.txt",
 
 
 def orig_main(args, printer):
+    """wrapper for thirdver. runs thirdver, writes data to file and plots data if required.
 
+    parameters:
+    args: command line arguments
+    printer: printer object. see file_handler.py"""
     col_names, data, plot_dat = thirdver(args.filename, args.filters, args.physicality, printer)
 
     signals, names, n_chan, signal_statuses, bad_segs, suspicious_segs, phys_stat, t = plot_dat
@@ -318,7 +286,9 @@ def orig_main(args, printer):
         hf.plot_in_order_ver3(signals, names, n_chan, signal_statuses, bad_segs, suspicious_segs, physicality=phys_stat,
                               time_x=t)
 
+
 def main():
+    """main program. reads command line arguments and runs the required mode."""
     args = arg_parser()
     warnings.filterwarnings("ignore", category=RuntimeWarning)
 
@@ -343,9 +313,11 @@ def main():
 
     if args.mode == 2:
         if args.time == default_time_window:
-            printer.extended_write("no time window given, analysing default window", default_time_window, additional_mode="print")
+            printer.extended_write("no time window given, analysing default window", default_time_window,
+                                   additional_mode="print")
 
-        partial_analysis(args.time, args.filename, printer, args.output, filters=args.filters, phys=args.physicality, plot=args.plot)
+        partial_analysis(args.time, args.filename, printer, args.output, filters=args.filters, phys=args.physicality,
+                         plot=args.plot)
 
 
 if __name__ == '__main__':

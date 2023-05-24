@@ -1,20 +1,27 @@
-import math
-
 import numpy as np
 import time
 import helper_funcs as hf
 from operator import itemgetter
 
-
 """all sensitivity and weight values in this file have been determined
 experimentally and changing them will affect the accuracy of the program
 significantly"""
 
-sample_freq = 10000 # sampling frequency of the squids
+sample_freq = 10000  # sampling frequency of the squids
+
 
 def filter_start(signal, offset=50, max_rel=0.05, debug=False):
     """filter the jump in the beginning of the signal. returns the index
-    where the jump has ended."""
+    where the jump has ended.
+
+    parameters:
+    signal: array or list containing the signal.
+    offset: how much to add to the index of the actual jump.
+    max_rel: the relative length of the signal to analyse (from the beginning).
+    debug: debug mode.
+
+    returns:
+    result: the index where to cut the signal."""
     max_i = int(max_rel * len(signal))
     grad = np.gradient(signal)
     new_grad = grad[:max_i]
@@ -23,11 +30,11 @@ def filter_start(signal, offset=50, max_rel=0.05, debug=False):
     locations = sorted([np.where(new_grad == x)[0][0] for x in largest])
 
     if largest[0] < 2.5 * 10 ** (-10) or any(x >= 50 for x in np.gradient(locations)):
-        #print("result:", 0)
-        #result = np.int64(0)
+        # print("result:", 0)
+        # result = np.int64(0)
         result = min(locations)
     else:
-        #print("result:", locations[0] + offset)
+        # print("result:", locations[0] + offset)
         result = locations[0] + offset
 
     # farther_i = np.amax([max_grad_i, min_grad_i])
@@ -40,7 +47,17 @@ def filter_start(signal, offset=50, max_rel=0.05, debug=False):
 def averages_are_close(signal, start_is, end_is, averages=None, std_sensitivity=0.015):
     """check if the values of segments are close to eachother. previously calculated
     averages may also be included. difference in values is determined by
-    calculating the standard deviation of all values."""
+    calculating the standard deviation of all values.
+
+    parameters:
+    signal: list or array containing signal.
+    start_is: list containing the start indices of all segments.
+    end_is: list containing the end indices of all segments.
+    averages: additional averages to evaluate.
+    std_sensitivity: the tolerance of the standard deviation of all evaluated averages.
+
+    returns:
+    boolean. true if averages are close."""
     if averages is None:
         averages = []
 
@@ -60,13 +77,22 @@ def averages_are_close(signal, start_is, end_is, averages=None, std_sensitivity=
     return std <= std_sensitivity
 
 
-def average_of_gradient(signal, start_i, end_i, offset_percentage=0.05):
+def average_of_gradient(signal, start_i, end_i, rel_offset=0.05):
     """calculate the average value of the gradient of a signal between
     start_i and end_i. start_i may be offset if the start of a segment
     needs to be excluded (due to how find_flat_segments works the start of
-    a given segment may be slightly before the signal truly flattens)"""
+    a given segment may be slightly before the signal truly flattens)
+
+    parameters:
+    signal: list or array containing signal.
+    start_i: start index of segment to analyse.
+    end_i: end index of segment to analyse.
+    rel_offset: how much start_i is offset by.
+
+    returns:
+    float. mean of the gradient of the segment."""
     length = end_i - start_i
-    offset = int(offset_percentage * length)
+    offset = int(rel_offset * length)
     segment = signal[start_i + offset: end_i]
     grad = np.gradient(segment)
     return np.mean(grad)
@@ -74,7 +100,15 @@ def average_of_gradient(signal, start_i, end_i, offset_percentage=0.05):
 
 def uniq_filter_neo(signal, filter_i):
     """find segments where a certain value repeats. this filter ignores parts
-    where the signal deviates from the unique value momentarily."""
+    where the signal deviates from the unique value momentarily.
+
+    parameters:
+    signal: list or array containing signal.
+    filter_i: index returned by filter_start().
+
+    returns:
+    list of lists. list containing all found segments (contains only one segment).
+    list of int. scores of all segments (contains only one score)."""
     uniqs, indices, counts = np.unique(signal[:], return_index=True, return_counts=True)
     max_repeat = np.amax(counts)
     if max_repeat <= 10:
@@ -96,7 +130,14 @@ def uniq_filter_neo(signal, filter_i):
 
 
 def reformat_segments(start_is, end_is):
-    """reformat segment start and end indices into a single list"""
+    """reformat segment start and end indices into a list of tuples
+
+    parameters:
+    start_is: all start indices.
+    end_is: all end indices.
+
+    returns:
+    lst: list of tuples."""
     lst = []
     for i in range(len(start_is)):
         lst.append([start_is[i], end_is[i]])
@@ -104,17 +145,25 @@ def reformat_segments(start_is, end_is):
     return lst
 
 
-def find_flat_segments(signal, rel_sensitive_length=0.07, relative_sensitivity=0.02):
+def find_flat_segments(signal):
     """finds segments in the signal where the value stays approximately the same for long periods.
     returns lengths of segments, as well as their start and end indices.
     rel_sensitive_length determines how long a segment needs to be marked
-    and relative_sensitivity determines how close the values need to be."""
+    and relative_sensitivity determines how close the values need to be.
+
+    parameters:
+    signal: list or array containing signal.
+
+    returns:
+    lengths: list containing lengths of segments.
+    start_is: list containing start indices of segments.
+    end_is: list containing end indices of segments."""
     lengths = []
     start_is = []
     end_is = []
     lock_val = None  # subsequent values are compared to this value
 
-    #sensitive_length = len(signal) * rel_sensitive_length
+    # sensitive_length = len(signal) * rel_sensitive_length
     sensitive_length = 200
     length = 1
     for i in range(len(signal)):
@@ -123,12 +172,12 @@ def find_flat_segments(signal, rel_sensitive_length=0.07, relative_sensitivity=0
         if lock_val is None:
             is_close = False
         else:
-            #print("rel", abs(abs(val - lock_val) / lock_val), "abs", abs(val - lock_val))
-            #is_close = abs(abs(val - lock_val) / lock_val) < relative_sensitivity
-            is_close = abs(val - lock_val) <= 2*10**(-10)
+            # print("rel", abs(abs(val - lock_val) / lock_val), "abs", abs(val - lock_val))
+            # is_close = abs(abs(val - lock_val) / lock_val) < relative_sensitivity
+            is_close = abs(val - lock_val) <= 2 * 10 ** (-10)
 
         if not is_close or (is_close and i == len(signal) - 1):
-            #print("cut")
+            # print("cut")
             if length > sensitive_length:
                 start_is.append(start_i)
                 end_is.append(i)
@@ -146,13 +195,25 @@ def find_flat_segments(signal, rel_sensitive_length=0.07, relative_sensitivity=0
 def cal_seg_score_flat(signal, start_i, end_i, printer,
                        uniq_w=1.5, grad_sensitivity=0.5 * 10 ** (-13),
                        grad_w=10 ** 12, len_w=1, max_len=2900):
-    """calculate a goodness value (a value determining how likely a flat segment
+    """calculate a goodness value or score (a value determining how likely a flat segment
     has been wrongly detected by find_flat_segments) for a segment in a
     signal. a goodness value is increased if a segment has no clear trend,
     has a small fraction of unique values and is long.
-    goodness > 1 -> bad
-    goodness < 1 -> good/suspicious
-    goodness < 0 -> very good"""
+    goodness > 1 -> bad.
+    goodness < 1 -> good/suspicious.
+    goodness < 0 -> very good.
+
+    parameters:
+    signal: list or array containing signal.
+    start_i: start index of segment to score.
+    end_i: end index of segment to score.
+    printer: printer object. see file_handler.py.
+    uniq_w, grad_w, len_w: weights for scoring.
+    grad_sensitivity: if the absolute value of the gradient is below this, grad score is 0.
+    max_len: maximum length of signal. NOT CHANGED.
+
+    returns:
+    tot_conf: score for segment."""
     segment = signal[start_i: end_i]
     uniqs = np.unique(segment)
 
@@ -174,7 +235,7 @@ def cal_seg_score_flat(signal, start_i, end_i, printer,
     sig_len = len(signal)
     # print(len(signal))
 
-    if sig_len >= max_len/2:
+    if sig_len >= max_len / 2:
         len_w = 1.5 * len_w
         grad_conf *= 1.5
 
@@ -190,7 +251,16 @@ def cal_seg_score_flat(signal, start_i, end_i, printer,
 def flat_filter(signal, printer, grad_sens=0.5 * 10 ** (-13)):
     """find segments where the value stays the same value for a long period.
     also recalculates the tail of the signal and calculates
-    a confidence value for the segment"""
+    a confidence value for the segment.
+
+    parameters:
+    signal: list or array containing signal.
+    printer: printer object. see file_handler.py.
+    grad_sens: sensitivity threshold for the absolute value of the gradient.
+
+    returns:
+    comb_segs: list of tuples. contains all suspicious and bad segments.
+    confidences: scores for all returned segments."""
     lengths, start_is, end_is = find_flat_segments(signal)
 
     if len(start_is) == 0:
@@ -238,8 +308,21 @@ def cal_seg_score_spike(gradient, spikes, all_diffs, printer, max_sensitivities=
     average gradient of the segment and the density of spikes.
     returns both the confidence and a segment that starts
     at the first spike and ends at the last.
-    goodness > 1 -> bad
-    goodness < 1 -> good"""
+    goodness > 1 -> bad.
+    goodness < 1 -> good.
+
+    parameters:
+    gradient: list or array containing the derivative of the signal.
+    spikes: list of lists. each individual list contains the indices where the derivative is considered a spike.
+    all_diffs: list of lists. contains differences between grad_sensitivity and the actual value of the derivative for
+    all spike indices.
+    printer: printer object. see file_handler.py.
+    max_sensitivities, n_sensitivities, grad_sensitivity, sdens_sensitivity: sensitivity/threshold values for diffs,
+    number of spikes, average gradient value and spike density.
+
+    returns:
+    list: start and end indices of marked segment.
+    score: score of segment."""
     if n_sensitivities is None:
         n_sensitivities = [20, 100]
 
@@ -303,7 +386,7 @@ def cal_seg_score_spike(gradient, spikes, all_diffs, printer, max_sensitivities=
     score = score / 1.5
 
     printer.extended_write("num_spikes", n, "av_diff", av_max, "grad_ave", grad_ave,
-          "spike_density", spike_density, "badness", score)
+                           "spike_density", spike_density, "badness", score)
 
     return [seg_start, seg_end], score
 
@@ -311,7 +394,18 @@ def cal_seg_score_spike(gradient, spikes, all_diffs, printer, max_sensitivities=
 def find_spikes(gradient, filter_i, grad_sensitivity, len_sensitivity=6, start_sens=150):
     """find spikes in the signal by checking where the absolute gradient of the signal
     abruptly goes above grad_sensitivity. returns the spikes and their
-    difference between the gradient and the grad_sensitivity"""
+    difference between the gradient and the grad_sensitivity.
+
+    parameters:
+    gradient: list containing derivative of signal.
+    filter_i: index returned by filter_start().
+    grad_sensitivity, len_sensitivity, start_sens: sensitivities for value of gradient, spike length and length of unanalysed
+    signal at the start.
+
+    returns:
+    spikes: list of lists. each individual list contains the indices where the derivative is considered a spike.
+    all_diffs: list of lists. contains differences between grad_sensitivity and the actual value of the derivative for
+    all spike indices."""
     spikes = []
     all_diffs = []
 
@@ -338,7 +432,17 @@ def find_spikes(gradient, filter_i, grad_sensitivity, len_sensitivity=6, start_s
 
 
 def spike_filter_neo(signal, filter_i, printer, grad_sensitivity=10 ** (-10)):
-    """finds segments with steep spikes in the signal and calculates their goodness"""
+    """finds segments with steep spikes in the signal and calculates their score.
+
+    parameters:
+    signal: list or array containing signal.
+    filter_i: index returned by filter_start().
+    printer: printer object. see file_handler.py.
+    grad_sensitivity: the value above which the gradient needs to be in order to be concidered a spike.
+
+    returns:
+    list containing the marked segment.
+    list containing the score of the marked segment."""
     gradient = np.gradient(signal)
     spikes, all_diffs = find_spikes(gradient, filter_i, grad_sensitivity)
     seg_is, confidence = cal_seg_score_spike(gradient, spikes, all_diffs, printer)
@@ -360,11 +464,13 @@ def spike_filter_neo(signal, filter_i, printer, grad_sensitivity=10 ** (-10)):
 
 
 def get_fft(signal, filter_i=0):
-    """calculate the fft (absolute value) of the signal"""
+    """NOT USED
+    calculate the fft (absolute value) of the signal
+    """
     from scipy.fft import fft
 
     if len(signal) == 0:
-         return [0]
+        return [0]
 
     ftrans = fft(signal[filter_i:])
     # ftrans_abs = [abs(x) for x in ftrans]
@@ -374,7 +480,8 @@ def get_fft(signal, filter_i=0):
 
 
 def calc_fft_indices(signal, printer, indices=None, window=400, smooth_window=401, filter_offset=0, goertzel=False):
-    """calculate the fft for a windowed part of the signal. the window is scanned across
+    """NOT USED
+    calculate the fft for a windowed part of the signal. the window is scanned across
     the entire signal so that the fft values are as a function of time.
     returns the specified indices of the fft as a function of time.
     before calculating the ffts the trend of the signal is removed by first
@@ -433,6 +540,14 @@ def calc_fft_indices(signal, printer, indices=None, window=400, smooth_window=40
 
 
 def calc_dft_constants(k, N):
+    """calculate all constant elements (e^(-i*2*pi*k*n/N)) for dft calculation.
+
+    parameters:
+    k: index of the dft component to calculate.
+    N: number of points in signal.
+
+    returns:
+    dft_factors: list containing dft factors."""
     const = -2 * np.pi / N
     dft_factors = []
     for n in range(N):
@@ -442,6 +557,22 @@ def calc_dft_constants(k, N):
 
 
 def calc_fft_index_fast(signal, printer, dft_consts, window=400, smooth_window=401, filter_offset=0):
+    """same as calc_fft_index but for only one dft index. is faster.
+
+    parameters:
+    signal: list or array containing signal.
+    printer: printer object. see file_handler.py.
+    dft_constant: list containing all constant elements of the dft.
+    window: window length of fft series.
+    smooth_window: window length of signal smoothing.
+    filter_offset: constant used in creating smooth_x. MOST LIKELY NOT USED ANYWHERE.
+
+    returns:
+    fft_tseries: the required dft index as a function of time.
+    nu_x: x values (in indices) of fft_tseries.
+    smooth_signal: list containing smoothed signal.
+    smooth_x: x values (in indices) of smooth_signal.
+    filtered_signal: list containing signal with the trend removed."""
     sig_len = len(signal)
     ftrans_points = sig_len - window
 
@@ -486,15 +617,38 @@ def calc_fft_index_fast(signal, printer, dft_consts, window=400, smooth_window=4
     return fft_tseries, nu_x, smooth_signal, smooth_x, filtered_signal
 
 
-def stats_from_i(i_arr, i_x, bad_segs, fft_window, printer, cut_length=70, max_sig_len=800, lol=False):
-    """ status:
-    0 = good
-    1 = bad
-    2 = undetermined"""
+def stats_from_i(i_arr, i_x, bad_segs, fft_window, printer, cut_length=70, max_sig_len=800):
+    """post_process fft time series, calculate statistics and score.
+    status:
+    0 = good.
+    1 = bad.
+    2 = undetermined.
+
+    parameters:
+    i_arr: array containing fft time series.
+    i_x: x values (in indices) of time series.
+    bad_segs: list containing bad segments.
+    fft_window: length of rolling window.
+    printer: printer object. see file_handler.py.
+    cut_length: length (in indices) of signal to remove from the end.
+    max_sig_len: maximum length of signal.
+
+    returns:
+    nu_i_arr: post processed (portions cut from start and end) fft time series.
+    nu_i_x: x values (in indices) of post processed fft time series.
+    filter_i_i: index returned by filter_start when run on fft time series.
+    i_arr_ave: average of fft time series.
+    i_arr_sdev: standard deviation of fft time series.
+    cut_grad: derivative of post processed fft time series.
+    grad_ave: average of derivative.
+    grad_x: x values (in indices) of derivative.
+    status: status of fft analysis (0, 1, 2).
+    sus_score: score of fft time series:
+    short: boolean. if true, fft time series is short."""
     printer.extended_write("filtering fft:")
     offset = int(len(i_arr) * 0.0875)
     filter_i_i = filter_start(i_arr, offset=offset, max_rel=.175)
-    #filter_i_i = filter_i_list[0]
+    # filter_i_i = filter_i_list[0]
 
     last_i = len(i_arr) - 1
 
@@ -518,7 +672,8 @@ def stats_from_i(i_arr, i_x, bad_segs, fft_window, printer, cut_length=70, max_s
 
     grad_rmsd = np.sqrt(np.mean([(grad_ave - x) ** 2 for x in cut_grad]))
 
-    printer.extended_write("i ave:", i_arr_ave, " i sdev:", i_arr_sdev)  # ave < 10e-09 - 5e-09 => SUS, sdev > 3e-09 => SUS
+    printer.extended_write("i ave:", i_arr_ave, " i sdev:",
+                           i_arr_sdev)  # ave < 10e-09 - 5e-09 => SUS, sdev > 3e-09 => SUS
     printer.extended_write("grad rmsd", grad_rmsd)  # sus thresh: 2.5e-11, bad tresh: 7e-11 (raise this possibly)
     printer.extended_write("grad ave", grad_ave)  # > 1e-12 => SUS
     printer.extended_write("filtered fft length ", len(cut_i_arr))
@@ -537,7 +692,7 @@ def stats_from_i(i_arr, i_x, bad_segs, fft_window, printer, cut_length=70, max_s
         printer.extended_write("SIGNAL TOO SHORT")
         status = change_status(3, status)
         short = True
-        #return i_arr, nu_i_x, filter_i_i, i_arr_ave, i_arr_sdev, cut_grad, grad_ave, grad_x, status, sus_score, short
+        # return i_arr, nu_i_x, filter_i_i, i_arr_ave, i_arr_sdev, cut_grad, grad_ave, grad_x, status, sus_score, short
         return nu_i_arr, nu_i_x, filter_i_i, i_arr_ave, i_arr_sdev, cut_grad, grad_ave, grad_x, status, sus_score, short
 
     if len(cut_i_arr) < max_sig_len:
@@ -564,12 +719,12 @@ def stats_from_i(i_arr, i_x, bad_segs, fft_window, printer, cut_length=70, max_s
     if 3.5 * 10 ** (-9) < i_arr_sdev < 10 ** (-8):
         printer.extended_write("SUSPICIOUS SDEV")
         sus_score += 1
-    elif i_arr_sdev > 10 ** (-8): # TODO increase maybe??
+    elif i_arr_sdev > 10 ** (-8):  # TODO increase maybe??
         printer.extended_write("EXTREMELY HIGH SDEV")
         status = change_status(1, status)
 
     # sus: 1e-08 - 5e-09, bad < 5e-09
-    if i_arr_ave < 1 * 10 ** (-14): # 1.5e-09
+    if i_arr_ave < 1 * 10 ** (-14):  # 1.5e-09
         printer.extended_write("NO 50HZ DETECTED")
         status = change_status(1, status)
     elif i_arr_ave < 6 * 10 ** (-9):
@@ -587,13 +742,30 @@ def stats_from_i(i_arr, i_x, bad_segs, fft_window, printer, cut_length=70, max_s
         printer.extended_write("SUSPICIOUS SIGNAL")
         status = change_status(2, status)
 
-    #return i_arr, nu_i_x, filter_i_i, i_arr_ave, i_arr_sdev, cut_grad, grad_ave, grad_x, status, sus_score, short
+    # return i_arr, nu_i_x, filter_i_i, i_arr_ave, i_arr_sdev, cut_grad, grad_ave, grad_x, status, sus_score, short
     return nu_i_arr, nu_i_x, filter_i_i, i_arr_ave, i_arr_sdev, cut_grad, grad_ave, grad_x, status, sus_score, short
 
 
 # TODO check that this works properly
 def find_saturation_point_from_fft(i_x, i_arr, filter_i, fft_window, printer, sdev_window=10, rel_sdev_thresh=1.75,
                                    abs_sdev_thresh=1.35 * 10 ** (-10)):
+    """analyses fft time series and looks for clear saturation points. does this by calculating a rolling standard deviation
+
+    parameters:
+    i_x: x values (in indices) of time series.
+    i_arr: array containing fft time series.
+    filter_i: index returned by filter_start when run on original signal.
+    fft_window: window length for fft time series.
+    printer: printer object. see file_handler.py
+    sdev_window: length of rolling sdev calculation.
+    rel_sdev_thresh, abs_sdev_thresh: relative threshold values for the sdev of the sdev time series.
+
+    returns:
+    rms_x: x values (in indices) of sdev time series.
+    fft_sdev: sdev time series of fft time series.
+    error_start: start index of saturation. None if no saturation point found.
+    sdev_thresh: absolute threshold value of sdev of sdev.
+    sdev_span: span where sdev time series is above threshold."""
     if len(i_arr) == 0:
         return None, None, None, None, None
 
@@ -610,11 +782,11 @@ def find_saturation_point_from_fft(i_x, i_arr, filter_i, fft_window, printer, sd
         seg_len = hf.length_of_segments([sdev_span])
         highsdev = span_sdev_ave > abs_sdev_thresh
         # ave_diff = span_sdev_ave - sdev_mean
-        #highsdev = ave_diff > 2.5*10**(-11)
+        # highsdev = ave_diff > 2.5*10**(-11)
         span_start_i = where_above_sdev[0]
         printer.extended_write("span_sdev_ave", span_sdev_ave, "seg_len", seg_len, "span_start_i", span_start_i)
         # printer.extended_write("ave diff", ave_diff)
-        local_err = 200 <= seg_len <= 500 # TODO increase upper bound?
+        local_err = 200 <= seg_len <= 500  # TODO increase upper bound?
 
         # ave diff 2.5-6e-11
         if highsdev and local_err and span_start_i > 6:
@@ -629,9 +801,28 @@ def find_saturation_point_from_fft(i_x, i_arr, filter_i, fft_window, printer, sd
     return rms_x, fft_sdev, None, sdev_thresh, None
 
 
-def fft_filter(signal, filter_i, bad_segs, printer, dft_consts, fft_window=400, indices=[2], badness_sens=.5, debug=False, fft_cut=70, min_length=400,
-               goertzel=False, lol=False):
+def fft_filter(signal, filter_i, bad_segs, printer, dft_consts, fft_window=400, badness_sens=.5,
+               debug=False, fft_cut=70, min_length=400):
+    """calculates fft time series and returns segments containing errors. the segment
+    is the entire analysed part of the signal unless a specific saturation point is found.
 
+    parameters:
+    signal: list or array containing signal.
+    filter_i: index returned by filter_start().
+    bad_segs: list of bad segments in signal.
+    printer: printer object. see file_handler.py.
+    dft_consts: list of all constant elements of dft calculation.
+    fft_window: window for fft time series calculation.
+    badness_sens: relative length of signal that needs to be bad for the signal to be concidered too short.
+    debug: if true, the function will return more data.
+    fft_cut: how many data points to remove from the end of the fft time series.
+    min_length: minimum required length of signal
+
+    returns:
+    list containing the marked segment.
+    list containing the score for the segment.
+    see docstrings for calc_fft_index_fast, stats_from_i and find_saturation_point_from_fft for details about variables
+    returned in debug mode."""
     normal_sig = signal[filter_i:]
     sig_len = len(normal_sig)
     final_i_filtsignal = sig_len - 1
@@ -646,7 +837,6 @@ def fft_filter(signal, filter_i, bad_segs, printer, dft_consts, fft_window=400, 
         minus_i = final_i_filtsignal - bad_start_i + fft_window
         good_len = len(normal_sig[:-minus_i])
 
-
     rel_bad_len = bad_len / sig_len
 
     if rel_bad_len >= badness_sens or good_len < min_length:
@@ -656,10 +846,11 @@ def fft_filter(signal, filter_i, bad_segs, printer, dft_consts, fft_window=400, 
         else:
             return [], []
 
-    #i_arr, i_x, smooth_signal, smooth_x, detrended_sig = calc_fft_indices(normal_sig, printer, indices=indices, window=fft_window,
-                                                                          #filter_offset=filter_i, goertzel=goertzel)
+    # i_arr, i_x, smooth_signal, smooth_x, detrended_sig = calc_fft_indices(normal_sig, printer, indices=indices, window=fft_window,
+    # filter_offset=filter_i, goertzel=goertzel)
 
-    i_arr, i_x, smooth_signal, smooth_x, detrended_sig = calc_fft_index_fast(normal_sig, printer, dft_consts, filter_offset=filter_i)
+    i_arr, i_x, smooth_signal, smooth_x, detrended_sig = calc_fft_index_fast(normal_sig, printer, dft_consts,
+                                                                             filter_offset=filter_i)
 
     if i_arr is None:
         if debug:
@@ -671,7 +862,7 @@ def fft_filter(signal, filter_i, bad_segs, printer, dft_consts, fft_window=400, 
     #     i_arr[0], i_x, bad_segs, fft_window, printer, cut_length=fft_cut, lol=lol)
 
     cut_i_arr, cut_i_x, filter_i_i, i_arr_ave, i_arr_sdev, cut_grad, grad_ave, grad_x, status, sus_score, short = stats_from_i(
-         i_arr, i_x, bad_segs, fft_window, printer, cut_length=fft_cut, lol=lol)
+        i_arr, i_x, bad_segs, fft_window, printer, cut_length=fft_cut)
 
     filter_i_i += filter_i
 
@@ -689,6 +880,18 @@ def fft_filter(signal, filter_i, bad_segs, printer, dft_consts, fft_window=400, 
 
 
 def score_fft_segment(status, error_start, final_i_fullsignal, filter_i_i):
+    """translate status from stats_from_i to a score readable by separate_segments. also generate a readable
+    segment.
+
+    parameters:
+    status: status from stats_from_i.
+    error_start: error_start from find_saturation_point_from_fft.
+    final_i_full_signal: last index of original signal.
+    filter_i_i: index returned by filter_start when run on fft time series.
+
+    returns:
+    list containing marked segment.
+    list containing score for marked segment."""
     if status == 0:
         score = -.5
 
@@ -712,141 +915,14 @@ def score_fft_segment(status, error_start, final_i_fullsignal, filter_i_i):
     return segments, [score]
 
 
-def analyze_fft(fft_i, window=400):
-    start_i = 0
-    end_i = window - 1
-
-    final_i = len(fft_i) - 1
-
-    sdev = []
-    cont = True
-    while cont:
-        seg = fft_i[start_i:end_i]
-        sdev.append(np.std(seg))
-
-        start_i = end_i
-        end_i = end_i + window
-
-        if end_i > final_i:
-            end_i = final_i
-
-        if start_i >= final_i:
-            cont = False
-
-    return sdev
-
-
-def find_default_y(arr, num_points=5000, step=.1 * 10 ** (-7)):
-    """UNUSED
-    this function would be used to find the default value of the fft function
-    calculated by the calc_fft_indices function
-    scan a signal across the y axis and find the highest value segment which
-    contains a significant amount of all the values in a signal."""
-    y_arr = np.linspace(0, 1 * 10 ** (-7), num_points)
-    arr_len = len(arr)
-    frac_arr = []
-
-    # calculate the fraction of signals in a segment of length step as a
-    # function of y
-    for y_min in y_arr:
-        y_max = y_min + step
-        vals_in_step = [val for val in arr if y_min < val < y_max]
-        frac = len(vals_in_step) / arr_len
-        frac_arr.append(frac)
-
-    # smooth the fraction function (this is done so that not every small
-    # local maximum is detected)
-    frac_arr = np.asarray(frac_arr)
-    smooth_window = 201
-    offset = int(smooth_window / 2)
-    smooth_frac = hf.smooth(frac_arr, window_len=smooth_window)
-    smooth_x = [x - offset for x in list(range(len(smooth_frac)))]
-
-    new_smooth = []
-    for i in range(num_points):
-        new_smooth.append(smooth_frac[i + offset])
-
-    # find local extrema (whose value is above .1) of the smoothed fraction function
-    from scipy.signal import argrelextrema
-    new_smooth = np.asarray(new_smooth)
-    smooth_max_is = argrelextrema(new_smooth, np.greater, order=10)[0]
-
-    maxima = new_smooth[smooth_max_is]
-    maxima = [val for val in maxima if val > .1]
-    max_is = []
-
-    for i in range(len(new_smooth)):
-        val = new_smooth[i]
-        if val in maxima:
-            max_is.append(i)
-
-    # return the highest of these maxima
-    if len(max_is) == 0:
-        final_i = None
-        max_step = np.amax(frac_arr)
-        max_i = list(frac_arr).index(max_step)
-        seg_min = y_arr[max_i]
-        seg_max = seg_min + step
-    else:
-        final_i = np.amax(max_is)
-        seg_min = y_arr[final_i]
-        seg_max = seg_min + step
-
-    return y_arr, frac_arr, (seg_min, seg_max), new_smooth, max_is, final_i
-
-
-# TODO test this again
-def get_spans_from_fft(fft_i2, hseg, printer, fft_window=400):
-    """UNUSED
-    this function would be used in conjunction with find_default_y to
-    find the segments where the signal is no longer periodic."""
-    segs = []
-    all_fft_segs = []
-
-    fft_segs = []
-    temp_seg = [-1, -1]
-    i_min = -1
-    i_max = -1
-    for fft_i in range(len(fft_i2)):
-        fft_val = fft_i2[fft_i]
-        val_in_hseg = hseg[0] < fft_val < hseg[1]
-
-        if (i_max != -1 and i_min != - 1) and (not val_in_hseg or fft_i == len(fft_i2) - 1):
-            printer.extended_write("in", i_min, i_max)
-            if temp_seg[0] < i_min < temp_seg[1]:
-                temp_seg = [temp_seg[0], i_max]
-                printer.extended_write("between", temp_seg)
-            elif temp_seg == [-1, -1]:
-                temp_seg = [i_min, i_max]
-                printer.extended_write("none", temp_seg)
-            else:
-                segs.append(temp_seg)
-                printer.extended_write("append", temp_seg)
-                temp_seg = [i_min, i_max]
-
-            i_min = -1
-            i_max = -1
-            continue
-
-        if val_in_hseg:
-            i_min_temp = fft_i
-            i_max_temp = fft_i + fft_window
-
-            if i_min == -1:
-                i_min = i_min_temp
-
-            if i_max_temp > i_max:
-                i_max = i_max_temp
-
-    if temp_seg != [-1, -1]:
-        printer.extended_write("final append")
-        segs.append(temp_seg)
-
-    return segs
-
-
 def combine_segments(segments):
-    """combine several segments so that there is no overlap between them"""
+    """combine several segments so that there is no overlap between them.
+
+    parameters:
+    segments: list of all segments to combine.
+
+    returns:
+    combined_segs: list of all combined segments."""
     n = len(segments)
 
     if n == 0:
@@ -879,7 +955,16 @@ def combine_segments(segments):
 
 
 def separate_segments(segments, confidences, conf_threshold=1):
-    """sort segments into bad and suspicious based on their confidence values"""
+    """sort segments into bad and suspicious based on their confidence values.
+
+    parameters:
+    segments: all segments to separate.
+    confidences: confidences of segments.
+    conf_threshold: threshold value for confidence values.
+
+    returns:
+    bad_segs: all bad segments.
+    suspicious_segs: all suspicious segments."""
     n = len(segments)
 
     bad_segs = []
@@ -899,7 +984,14 @@ def separate_segments(segments, confidences, conf_threshold=1):
 
 def fix_overlap(bad_segs, suspicious_segs):
     """fix overlap between suspicious and bad segments. bad segments take priority
-    over suspicious ones"""
+    over suspicious ones. only returns the suspicious segments since bad segments stay unchanged.
+
+    parameters:
+    bad_segs: list containing bad segments.
+    suspicious_segs: list containing suspicious segments.
+
+    returns:
+    new_suspicious_segs: list of fixed suspicious segments."""
     if len(bad_segs) == 0 or len(suspicious_segs) == 0:
         return suspicious_segs
 
@@ -923,7 +1015,15 @@ def fix_overlap(bad_segs, suspicious_segs):
 
 def final_analysis(segments, confidences):
     """take all segments and their confidences and separate segments into good,
-    suspicious and bad, as well as fix the overlap between them."""
+    suspicious and bad, as well as fix the overlap between them.
+
+    parameters:
+    segments: list of segments.
+    confidences: list of scores for segments.
+
+    returns:
+    bad_segs: list of bad segments.
+    suspicious_segs: list of suspicious segments."""
     bad_segs, suspicious_segs = separate_segments(segments, confidences)
 
     bad_segs = combine_segments(bad_segs)
@@ -936,14 +1036,21 @@ def final_analysis(segments, confidences):
 
 def analyse_all_neo(signals, names, chan_num, printer=None,
                     filters=None,
-                    filter_beginning=True,
-                    fft_goertzel=False):
+                    filter_beginning=True):
     """go through all signals and determine suspicious and bad segments within them.
     this is done by running the signal through three different filters
     (spike_filter_neo, flat_filter_neo, uniq_filter_neo and fft_filter).
     the function returns lists containing all bad and suspicious segments
     as well as ones containing whether the signal is bad (boolean value) and
-    the time it took to analyse each signal."""
+    the time it took to analyse each signal.
+
+    parameters:
+    signals: list containing all signals.
+    names: list containing names of signals/detectors.
+    chan_num: total number of analysed signals/detectors.
+    printer: printer object. see file_handler.py.
+    filters: list of all FDFs to use.
+    filter_beginning: boolean. if true, filters the start of each signal with filter_start."""
     if filters is None:
         filters = ["uniq", "flat", "spike", "fft"]
 
@@ -997,7 +1104,7 @@ def analyse_all_neo(signals, names, chan_num, printer=None,
 
             if fltr == "fft":
                 temp_bad_segs, temp_suspicious_segs = final_analysis(segments, confidences)
-                seg_is, confs = fft_filter(signal, filter_i, temp_bad_segs, printer, dft_consts, goertzel=fft_goertzel)
+                seg_is, confs = fft_filter(signal, filter_i, temp_bad_segs, printer, dft_consts)
 
             new_segs = len(seg_is)
 
