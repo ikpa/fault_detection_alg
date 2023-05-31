@@ -10,10 +10,10 @@ def write_data_compact(fname, data, col_names, divider=";\t"):
     col_names are written in the header.
 
     parameters:
-    fname: name of file to write to.
-    data: list of lists containing data to write.
-    col_names: names of each column.
-    divider: divider between data entries."""
+        fname: string. name of file to write to.
+        data: list of lists containing data to write.
+        col_names: list of strings. names of each column.
+        divider: string. divider between data entries."""
     f = open(fname, "w")
     header = ""
 
@@ -45,24 +45,24 @@ def load_all(fname):
     """load all data from npz file.
 
     parameters:
-    fname: name of npz file to read.
+        fname: string. name of npz file to read.
 
     returns:
-    array with all data in file."""
+        array with all data in file."""
     return dat.MultiChannelData.load_npz(fname)
 
 def get_signals(fname, channels=["MEG*1", "MEG*4"]):
     """load data from file and reformat to individual arrays.
 
     parameters:
-    fname: name of npz file to read.
-    channels: channels to return. allows wildcard characters.
+        fname: string. name of npz file to read.
+        channels: list of strings. channels to return. allows wildcard characters.
 
     returns:
-    signals: list containing signals.
-    names: list containing names of channels.
-    time: list containing x values (in seconds) for all signals.
-    n_chans: number of channels read."""
+        signals: list containing signals.
+        names: list containing names of channels.
+        time: list containing x values (in seconds) for all signals.
+        n_chans: integer. number of channels read."""
     fname_full = fname
     data = load_all(fname_full).subpool(channels).clip(time_window)
     unorganized_signals = data.data
@@ -80,8 +80,8 @@ class Printer:
         """initialize object.
 
         parameters:
-        write_mode: string. determines where to write. print if to stdout, file if to file and none if to nowhere.
-        file: name of file to write to"""
+            write_mode: string. determines where to write. print if to stdout, file if to file and none if to nowhere.
+            file: string. name of file to write to"""
         self.mode = write_mode
         self.f = file
 
@@ -89,9 +89,9 @@ class Printer:
         """replaces standard print function, and is called similarly. writes to output determined by mode.
 
         parameters:
-        args: objects to write.
-        additional_mode: string. the input of args will be written to another output defined by this parameter.
-        allows same arguments as self.mode."""
+            args: list of strings. objects to write.
+            additional_mode: string. the input of args will be written to another output defined by this parameter.
+            allows same arguments as self.mode."""
         mode = self.mode + additional_mode
         f = self.f
 
@@ -117,6 +117,6 @@ class Printer:
             f.write(txt + "\n")
 
     def close(self):
-        """close file."""
+        """close file if file exists"""
         if "file" in self.mode:
             self.f.close()

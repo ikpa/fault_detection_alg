@@ -11,7 +11,15 @@ orig_time_window = (0.210, 0.50)
 r_sens_sq = 0.06**2
 
 def plot_spans(ax, segments, color="blue"):
-    """plot all segments onto a figure"""
+    """plot/color all segments in list onto a figure
+
+    parameters:
+        ax: the axis to plot the spans to.
+        segments: list containing the segments to plot.
+        color: string. color of the segments.
+
+    returns:
+        void"""
     if len(segments) == 0:
         return
 
@@ -22,6 +30,14 @@ def plot_spans(ax, segments, color="blue"):
 
 
 def seg_to_time(x, segs):
+    """converts all segments (in indices) to another unit, such as time.
+
+    parameters:
+        x: list of the x values in the same units the segments need to be converted to.
+        segs: list of the segments to convert (in indices).
+
+    returns:
+        new_segs: list containing converted segments in units of x."""
     new_segs = []
     for seg in segs:
         new_segs.append(x[seg])
@@ -31,7 +47,20 @@ def seg_to_time(x, segs):
 def plot_in_order_ver3(signals, names, n_chan, statuses,
                        bad_seg_list, suspicious_seg_list,
                        physicality=[], time_x=None, ylims=None, showtitle=True):
-    """plot all signals as well as show data calculated by the program"""
+    """plot all signals as well as show data calculated by the program. shows one signal at a time.
+    clicking x moves on to the next signal.
+
+    parameters:
+        signals: list containing all signals.
+        names: list containing names of all detectors/signals.
+        n_chan: integer. number of signals.
+        statuses: list of booleans. statuses[i] is True if signals[i] is bad.
+        bad_seg_list: list containing bad segments.
+        suspicious_seg_list: list containing suspicious segments.
+        physicality: list of integers. physicality statuses of signals. see analyse_phys_dat and analyse_phys_dat_alt in pca.py.
+        time_x: list of the x values of the plots. must be the same length as all of the lists in signals.
+        ylims: y axis limits of the plots. see set_ylims in the matplotlib documentation.
+        showtitle: boolean. if True, the titles are shown."""
     print_phys = not len(physicality) == 0
 
     #plt.rcParams.update({'font.size': 42})
@@ -118,46 +147,22 @@ def order_lists(pos_list, dat_names, signals):
     return new_names, new_signals
 
 
-def find_min_max_ragged(arr):
-    mini = None
-    maxi = None
-    for i in range(len(arr)):
-        sub_arr = arr[i]
-        for val in sub_arr:
-            if maxi is None or val > maxi:
-                maxi = val
-
-            if mini is None or val < mini:
-                mini = val
-
-    return mini, maxi
-
-
-def get_single_point(signals, i, n=1):
-    points = []
-
-    for signal in signals:
-        point = signal[i]
-        for j in range(n):
-            points.append(point)
-
-    return points
-
-
-def exclude_from_lists(i, lists):
-    new_lists = []
-
-    #print(len(lists[0]))
-
-    for lis in lists:
-        excl_val = lis[i]
-        new_list = [x for x in lis if not np.array_equal(excl_val, x)]
-        new_lists.append(new_list)
-
-    return new_lists
-
 def filter_and_smooth(signal, offset, smooth_window, smooth_only=False):
-    """filter the beginning spike from a signal and smooth it"""
+    """filter the beginning spike from a signal and smooth it. filtering the beginning
+    can be turned off if necessary.
+
+    parameters:
+        signal: list or array containing signal.
+        offset: integer. offset for smooth_x. only used if the beginning is not filtered.
+        smooth_window: integer. window length for the smoothing algorithm.
+        smooth_only: boolean. if true, the signal is only smoothed and the beginning is not filtered.
+
+    returns:
+        filtered_signal: list containing the signal with the beginning spike cropped out.
+        x: x values of the signal (in indices).
+        smooth_signal: list containing the FULL smoothed signal, i.e. containing values outside the original signal span.
+        smooth_x: list containing the x values of smooth_signal.
+        new_smooth: the smoothed signal."""
     if not smooth_only:
         filter_i = sa.filter_start(signal)
     else:
@@ -185,7 +190,13 @@ def fix_segs(segs, offset):
 
 def split_into_lists(original_list):
     """split a single list of integers into several lists so that each new list
-    contains no gaps between each integer"""
+    contains no gaps between each integer.
+
+    parameters:
+        original_list: list of integers.
+
+    returns:
+        new_lists: list of lists. contains lists with no gaps between integers."""
     n = len(original_list)
 
     if n == 0:
@@ -210,12 +221,33 @@ def split_into_lists(original_list):
     return new_lists
 
 def i_seg_from_time_seg(time_seg, t_x):
+    """converts a segment in units of time to segment in units of indices.
+
+    parameters:
+        time_seg: original segment (in seconds).
+        t_x: list containing all x_values (in seconds.
+
+    returns:
+        segment in indices."""
     start_i = np.where(abs(time_seg[0] - t_x) == min(abs(time_seg[0] - t_x)))[0][0]
     end_i = np.where(abs(time_seg[1] - t_x) == min(abs(time_seg[1] - t_x)))[0][0]
     return [start_i, end_i]
 
 
 def crop_signals_time(time_seg, t, signals, seg_extend):
+    """takes in a list of signals and a time segment, and returns a list of signals cropped within that time segment.
+    the crop is extended at each end of the crop window.
+
+    parameters:
+        time_seg: time segment/span to crop all signals to.
+        t: list containing the x values of the signals.
+        signals: list of lists containing all signals.
+        seg_extend: integer. how much to extend the crop at each end of the time window in indices.
+
+    returns:
+        cropped_signals: list of lists containing cropped signals.
+        cropped_ix: the x values of the signals in cropped_signals in indices.
+        i_seg: time_seg in indices."""
     if time_seg[0] > time_seg[1]:
         raise Exception("start of segment cannot be greater than end of segment")
 
@@ -253,6 +285,15 @@ def crop_signals_time(time_seg, t, signals, seg_extend):
 
 
 def segs_from_i_to_time(ix_list, t_x, bad_segs):
+    """convert list of segments in indices to a segment in seconds.
+
+    parameters:
+        ix_list: list containing all x values in indices.
+        t_x: list containing x values in seconds.
+        bad_segs: list containing all segments (in indices) to convert:
+
+    returns:
+        bad_segs_time: converted segments."""
     ix_is_list = not isinstance(ix_list[0], int)
     bad_segs_time = []
     for i in range(len(bad_segs)):
@@ -282,6 +323,16 @@ def segs_from_i_to_time(ix_list, t_x, bad_segs):
 
 
 def find_good_segs(i_x_target, bad_seg_list, i_x_tot):
+    """finds all good segments from a set of signals based on the found bad segments. works for signals cropped by
+    crop_signals_time.
+
+    parameters:
+        i_x_target: list containing x values. only contains the cropped x values.
+        bad_seg_list: list of bad segments.
+        i_x_tot: list containing x values. contains extended values.
+
+    returns:
+        good_seg_is: list containing good segments."""
     #ix_set = set(list(range(i_x_target[0] - i_x_tot[0], i_x_target[1] - i_x_tot[0] + 1)))
     good_seg_is = []
 
@@ -319,7 +370,15 @@ def find_good_segs(i_x_target, bad_seg_list, i_x_tot):
 
 def find_signals(channels, data_arr, names):
     """finds and returns data corresponding to channel names. data_arr and
-    names must be ordered and have the same length"""
+    names must be ordered and have the same length.
+
+    parameters:
+        channels: list of channel names to find.
+        data_arr: list containing all data to search.
+        names: list of all channel names.
+
+    returns:
+        signals_to_return: list containing the data corresponding to each name in channels."""
     indices = []
 
     for channel in channels:
@@ -336,7 +395,14 @@ def find_signals(channels, data_arr, names):
 
 def reorganize_signals(signals, n):
     """reformats signals so that a single array contains one signal instead of
-    one array containing one point in time"""
+    one array containing a single data point from all channels.
+
+    parameters:
+        signals: list containing all signals.
+        n: integer. number of signals.
+
+    returns:
+        new_signals: list containing reorganized signals."""
     new_signals = []
     for i in range(n):
         signal = signals[:, i]
@@ -345,6 +411,18 @@ def reorganize_signals(signals, n):
     return new_signals
 
 def filter_and_smooth_and_gradient_all(signals, offset, smooth_window, smooth_only=False):
+    """filters beginning spike, smooths and calculates the time derivative of all signals.
+    filtering the beginning spike can be turned on or off.
+
+    parameters:
+        signals: list containing all signals.
+        offset: integer. offset for the x values if smooth_only is chosen.
+        smooth_window: integer. window length for smoothing algorithm.
+        smooth_only: boolean. if True, the beginning spike is not filtered.
+
+    returns:
+        filt_signs: list containing all processed signals.
+        xs: list containing the x values for each processed signal."""
     filt_sigs = []
     xs = []
 
@@ -356,23 +434,6 @@ def filter_and_smooth_and_gradient_all(signals, offset, smooth_window, smooth_on
         xs.append(x)
 
     return filt_sigs, xs
-
-def list_good_sigs(names, signals, bad_seg_list, sus_seg_list):
-    good_names = []
-    good_signals = []
-    good_sus = []
-    good_bad = []
-
-    for i in range(len(names)):
-        bad_segs = bad_seg_list[i]
-
-        if len(bad_segs) != 0:
-            good_names.append(names[i])
-            good_signals.append(signals[i])
-            good_sus.append(sus_seg_list[i])
-            good_bad.append([])
-
-    return good_names, good_signals, good_sus, good_bad
 
 
 def smooth(x, window_len=21, window='hanning'):
@@ -433,7 +494,16 @@ def smooth(x, window_len=21, window='hanning'):
 def crop_all_sigs(signals, xs, bad_segs):
     """takes several signals and crops them on the x axis so that all signals
     are of the same length. if bad segments are present, only the part
-    before these segments are included. x-values must be in indices"""
+    before these segments are included. x-values must be in indices.
+
+    parameters:
+        signals: list of lists containing all signals.
+        xs: list of lists containing all x values for each signal.
+        bad_segs: list containing all bad segments
+
+    returns:
+        new_signals: list containing all cropped signals.
+        new_x: list of x values of the cropped signals."""
     highest_min_x = 0
     lowest_max_x = 10 ** 100
 
@@ -472,9 +542,19 @@ def averaged_signal(signal, ave_window, x=[], mode=0):
     """calculate rolling operation to signal. returns a signal that is
     len(signal)/ave_window data points long.
     modes:
-    0 = average
-    1 = rms
-    2 = sdev."""
+    0 = average.
+    1 = rms.
+    2 = sdev.
+
+    parameters:
+        signal: list containing signal.
+        ave_window: integer. window length for operation:
+        x: list containing x values of signal.
+        mode: integer. determines which operation to run
+
+    returns:
+        new_sig: list containing processed signal.
+        new_x: list containing x values of processed signal. returned only if x was inputted."""
     new_sig = []
     new_x = []
 
@@ -514,14 +594,22 @@ def averaged_signal(signal, ave_window, x=[], mode=0):
     return new_sig
 
 
-def calc_diff(signal1, signal2, x1, x2):
-    """calculate absolute difference between points in two different signals.
-    inputs may have different x-values with different spacings, as long as
-    there is some overlap. x-values must be in indices"""
+def calc_diff(signal1, signal2, x):
+    """calculate absolute difference between points in two different signals. signals do not need to be the same length.
+    x-values must be in indices.
+
+    parameters:
+        signal1: list containing the first signal.
+        signal2: list containing the second signal. can be longer than signal1.
+        x: list containing the x values of signal1.
+
+    returns:
+        diffs: list containing the differences between the signals.
+        new_x: list containing the new x values. currently the same as x"""
     new_x = []
     diffs = []
     for i in range(len(signal1)):
-        new_x.append(x1[i])
+        new_x.append(x[i])
         point1 = signal1[i]
         point2 = signal2[i]
         diffs.append(abs(point1 - point2))
@@ -530,9 +618,17 @@ def calc_diff(signal1, signal2, x1, x2):
 
 
 # TODO make faster
-def find_nearby_detectors(d_name, detectors, good_names, r_sens=0.06):
-    """find detectors within a radius r_sens from a given detector. channels
-    not in good_names are excluded."""
+def find_nearby_detectors(d_name, detectors, good_names):
+    """find detectors within a radius of 6 cm from a given detector. channels
+    not in good_names are not counted.
+
+    parameters:
+        d_name: string. name of detector.
+        detectors: list of strings containing all detector names:
+        good_names: list of strings containing the names of the detectors to exclude.
+
+    returns:
+        nears: list of strings containing the names of the nearby detectors."""
     dut = detectors[d_name]
     r_dut = dut[:3, 3]
 

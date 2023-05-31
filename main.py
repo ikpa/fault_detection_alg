@@ -51,16 +51,16 @@ def thirdver(fname, filters, phys, printer, channels=["MEG*1", "MEG*4"]):
     """run the default mode of the program (mode 1). outputs bad and suspicious segments as well as results of CA.
 
     parameters:
-    fname: name of file to analyse
-    filters: list of all FDFs to use. strings
-    phys: boolean. if true, CA is run
-    channels: names of channels to analyse. allows wildcard characters.
-    printer: printer object. see file_handler.py
+        fname: name of file to analyse
+        filters: list of all FDFs to use. strings
+        phys: boolean. if true, CA is run
+        channels: names of channels to analyse. allows wildcard characters.
+        printer: printer object. see file_handler.py
 
     returns:
-    col_names: column names for the results.
-    write_data: list of lists containing all the results. for example, write_data[i] contains the list with results for column with the name in col_names[i]
-    plot_data: list of lists with data for plot_in_order_ver3"""
+        col_names: column names for the results.
+        write_data: list of lists containing all the results. for example, write_data[i] contains the list with results for column with the name in col_names[i]
+        plot_data: list of lists with data for plot_in_order_ver3"""
 
     printer.extended_write("analysing " + fname, additional_mode="print")
     printer.extended_write("", additional_mode="print")
@@ -70,7 +70,7 @@ def thirdver(fname, filters, phys, printer, channels=["MEG*1", "MEG*4"]):
     printer.extended_write("", additional_mode="print")
     start_time = time.time()
     signal_statuses, bad_segs, suspicious_segs, exec_times = sa.analyse_all_neo(signals, names, n_chan, printer,
-                                                                                filters=filters, fft_goertzel=False)
+                                                                                filters=filters)
 
     num_bads, frac_bads = hf.frac_of_sigs(bad_segs)
 
@@ -166,15 +166,15 @@ def partial_analysis(time_seg, fname, printer, output="output_test.txt",
      returns nothing but writes results to file.
 
     parameters:
-    time_seg: tuple of floats. time segment (in seconds) to analyse
-    fname: filename to analyse
-    printer: printer object, see file_handler.py
-    output: string. the output filename
-    channels: the channels to analyse. allows wildcard characters
-    filters: the FDFs to use
-    seg_extend: int. determines how much the time segment is extended at each end (in data points)
-    phys: boolean. if true, CA is run
-    plot: boolean. if true, results are plotted"""
+        time_seg: tuple of floats. time segment (in seconds) to analyse
+        fname: filename to analyse
+        printer: printer object, see file_handler.py
+        output: string. the output filename
+        channels: the channels to analyse. allows wildcard characters
+        filters: the FDFs to use
+        seg_extend: int. determines how much the time segment is extended at each end (in data points)
+        phys: boolean. if true, CA is run
+        plot: boolean. if true, results are plotted"""
     signals, names, t, n_chan = fr.get_signals(fname, channels=channels)
 
     printer.extended_write("analysing time window " + str(time_seg) + " secs from file " + fname,
@@ -274,8 +274,8 @@ def orig_main(args, printer):
     """wrapper for thirdver. runs thirdver, writes data to file and plots data if required.
 
     parameters:
-    args: command line arguments
-    printer: printer object. see file_handler.py"""
+        args: command line arguments
+        printer: printer object. see file_handler.py"""
     col_names, data, plot_dat = thirdver(args.filename, args.filters, args.physicality, printer)
 
     signals, names, n_chan, signal_statuses, bad_segs, suspicious_segs, phys_stat, t = plot_dat

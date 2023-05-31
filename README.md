@@ -14,10 +14,21 @@ Run ` main.py ` using Python from the terminal. Takes in the following command l
 
 - `--filename` : *string*. Filename of the .npz file containing the data to analyse.
 - ` -m `/` --mode ` : `1` or `2`. Determines which of the above modes to run. Required.
-- ` -t`/` --time ` : two *floats*. Determines the time window for mode 2. Must be between 0.21 and 0.5.
+- ` -t`/` --time ` : two *floats*. Determines the time window for mode 2. Must be between 0.21 and 0.5. For example, to analyse the time window between 0.3 and 0.4 seconds, the input would be `-t 0.3 0.4`.
 - ` --filters ` : any combination of `uniq`, `flat`, `spike` and `fourier`. The names of the FDFs to run. 
 - ` -p`/ `--physicality`. If this flag is present, CA is run.
-- `-o`/ `--output`: *string*. Name of the file the results are written to.
+- `-o`/ `--output`: *string*. Name of the file the results are written to. Default value: `output_test.txt`.
 - `--plot`. If this flag is present, the program plots the signals in order along with their results. To see the next signal, x out of the current plot. Segments in red are bad, segments in yellow are suspicious and segments in green are good (only in mode 2).
 - `-prnt`/`--print_mode` : `print` or `file` or `none`. Determines where to print detailed information. `print` for terminal, `file` for log file and `none` for nowhere.
 - `-log` : *string*. Filename to output detailed information to when `file` is chosen with the previous argument. Default is `log.log`
+
+### Example run commands
+`--filename example_data.npz -m 1`
+
+`--filename example_data.npz -m 2 -t 0.25 0.45`
+
+`--filename example_data.npz -m 1 -p --plot`
+
+`--filename example_data.npz -m 1 -p -prnt file -log log1.log`
+
+`--filename example_data.npz -m 1 -o output1.txt --filters uniq flat`
