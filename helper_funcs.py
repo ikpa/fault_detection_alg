@@ -181,6 +181,14 @@ def filter_and_smooth(signal, offset, smooth_window, smooth_only=False):
 
 
 def fix_segs(segs, offset):
+    """offsets all segments by offset.
+
+    parameters:
+        segs: list of segments.
+        offset: integer. number with which to offset.
+
+    returns:
+        new_segs: list of offset segments."""
     new_segs = []
     for seg in segs:
         new_segs.append([seg[0] + offset, seg[1] + offset])
@@ -649,6 +657,13 @@ def find_nearby_detectors(d_name, detectors, good_names):
 
 
 def length_of_segments(segments):
+    """calculate total length of all segments.
+
+    parameters:
+        segments: list of segments.
+
+    returns:
+        tot_len: integer. length of segments"""
     tot_len = 0
     for segment in segments:
         length = segment[1] - segment[0]
@@ -658,6 +673,14 @@ def length_of_segments(segments):
 
 
 def frac_of_sigs(segs):
+    """calculate the fraction of signals that have segments.
+
+    parameters:
+        segs: list of segments.
+
+    returns:
+        n_segs: integer. number of signals that have segments.
+        frac: float. fraction of signals that have segments."""
     n_tot = len(segs)
 
     n_segs = 0

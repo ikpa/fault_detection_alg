@@ -1044,8 +1044,12 @@ def analyse_all_neo(signals, names, chan_num, printer=None,
     as well as ones containing whether the signal is bad (boolean value) and
     the time it took to analyse each signal.
 
+    note: a "segment" is a tuple or list of integers or floats with two elements. the first is the starting point and
+    the second is the ending point of the span defined by the segment.
+
     parameters:
-        signals: list containing all signals.
+        signals: list containing all signals. each element of the list should be an individual signal. all signals must
+        be the same length.
         names: list containing names of signals/detectors.
         chan_num: integer. total number of analysed signals/detectors.
         printer: printer object. see file_handler.py.

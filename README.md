@@ -23,12 +23,12 @@ Run ` main.py ` using Python from the terminal. Takes in the following command l
 - `-log` : *string*. Filename to output detailed information to when `file` is chosen with the previous argument. Default is `log.log`
 
 ### Example run commands
-`--filename example_data.npz -m 1`
+`main.py --filename example_data.npz -m 1`
 
-`--filename example_data.npz -m 2 -t 0.25 0.45`
+`main.py --filename example_data.npz -m 2 -t 0.25 0.45`
 
-`--filename example_data.npz -m 1 -p --plot`
+`main.py --filename example_data.npz -m 1 -p --plot`
 
-`--filename example_data.npz -m 1 -p -prnt file -log log1.log`
+`main.py --filename example_data.npz -m 1 -p -prnt file -log log1.log`
 
-`--filename example_data.npz -m 1 -o output1.txt --filters uniq flat`
+`main.py --filename example_data.npz -m 1 -o output1.txt --filters uniq flat`
